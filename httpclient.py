@@ -33,7 +33,23 @@ class HTTPResponse(object):
         self.body = body
 
 class HTTPClient(object):
-    #def get_host_port(self,url):
+    def get_host_port(self,port):
+        if port == None:
+            return 80
+        else:
+            return port
+
+    def get_path(self, path):
+        if path == "":
+            return "/"
+        else:
+            return path
+
+    def get_query_string(self, query):
+        if query != "":
+            return "?" + query
+        else:
+            return ""
 
     def connect(self, host, port):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -41,13 +57,21 @@ class HTTPClient(object):
         return None
 
     def get_code(self, data):
-        return None
+        dataArray = data.split("\r\n")
+        statusLineArray = dataArray[0].split()
+        print(statusLineArray)
+        return statusLineArray[1]
 
     def get_headers(self,data):
-        return None
+        dataArray = data.split("\r\n")
+        headers = ""
+        for i in range(1, len(dataArray) - 2):
+            headers += dataArray[i] + "\r\n"
+        return headers
 
     def get_body(self, data):
-        return None
+        dataArray = data.split("\r\n")
+        return dataArray[-1]
     
     def sendall(self, data):
         self.socket.sendall(data.encode('utf-8'))
@@ -55,6 +79,7 @@ class HTTPClient(object):
     def close(self):
         self.socket.close()
 
+  
     # read everything from the socket
     def recvall(self, sock):
         buffer = bytearray()
@@ -68,8 +93,19 @@ class HTTPClient(object):
         return buffer.decode('utf-8')
 
     def GET(self, url, args=None):
-        code = 500
-        body = ""
+        urlObject = urllib.parse.urlparse(url)
+        port = self.get_host_port(urlObject.port)
+        path = self.get_path(urlObject.path)
+        query = self.get_query_string(urlObject.query)
+        self.connect(urlObject.hostname, port)
+        requestString = "{method} {path} HTTP/1.1\r\nHost: {host}\r\n\r\n"
+        self.sendall(requestString.format(method="GET", path=path+query, host=urlObject.hostname))
+        self.socket.shutdown(socket.SHUT_WR)
+        response = self.recvall(self.socket)
+        self.close()
+        code = int(self.get_code(response))
+        #print(self.get_headers(response))
+        body = self.get_body(response)
         return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
