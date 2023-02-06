@@ -29,11 +29,33 @@ def help():
     print("httpclient.py [GET/POST] [URL]\n")
 
 class HTTPResponse(object):
-    def __init__(self, code=200, body=""):
+    def __init__(self, code=200, body="", full_response=""):
         self.code = code
         self.body = body
+        self.full_response = full_response
+    
+    def __str__(self) -> str:
+        return self.full_response
 
 class HTTPClient(object):
+    def check_url_scheme(self, url):
+        schemeCheck = re.match("^(http:\/\/).*", url)
+        if schemeCheck == None:
+            return False
+        return True
+
+    def check_url_host(self, url):
+        urlObject = urllib.parse.urlparse(url)
+        return urlObject.hostname != None
+
+    def extract_url_info(self, url, args):
+        urlObject = urllib.parse.urlparse(url)
+        host = urlObject.hostname
+        port = self.get_host_port(urlObject.port)
+        path = self.get_path(urlObject.path)
+        query = self.get_query_string(urlObject.query, args)
+        return host, port, path, query
+
     def get_host_port(self,port):
         if port == None:
             return 80
@@ -46,11 +68,19 @@ class HTTPClient(object):
         else:
             return path
 
-    def get_query_string(self, query):
-        if query != "":
-            return "?" + query
+    def get_query_string(self, query, args):
+        if args != None:
+            return "?" + self.extract_query_from_args(args) + query
+        elif query != "":
+            return "?" + query 
         else:
             return ""
+
+    def extract_query_from_args(self, args):
+        queryString = ""
+        for arg in args:
+            queryString += arg + "=" + args[arg]+"&"
+        return queryString[0:1]
 
     def connect(self, host, port):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -94,30 +124,31 @@ class HTTPClient(object):
         return buffer.decode('utf-8')
 
     def GET(self, url, args=None):
-        urlObject = urllib.parse.urlparse(url)
-        port = self.get_host_port(urlObject.port)
-        path = self.get_path(urlObject.path)
-        query = self.get_query_string(urlObject.query)
-        self.connect(urlObject.hostname, port)
-        requestString = "{method} {path} HTTP/1.1\r\nHost: {host}\r\nAccept: */*\r\nAccept-Charset: UTF-8\r\nAccept-Language: en-US\r\nAccept-Encoding: gzip\r\n\r\n"
-        print("Request: " + requestString.format(method="GET", path=path+query, host=urlObject.hostname))
-        self.sendall(requestString.format(method="GET", path=path+query, host=urlObject.hostname))
+        host, port, path, query = self.extract_url_info(url, args)
+        try:
+            self.connect(host, port)
+        except: 
+            return "Failed to connect to host at specfied port"
+        requestString = "{method} {path} HTTP/1.1\r\nHost: {host}\r\nUser-Agent: \r\nAccept: */*\r\n\r\n"
+        print("Request: \n" + requestString.format(method="GET", 
+                                                 path=path+query, 
+                                                 host=host))
+        self.sendall(requestString.format(method="GET", 
+                                          path=path+query, 
+                                          host=host))
         self.socket.shutdown(socket.SHUT_WR)
         response = self.recvall(self.socket)
-        if response == "":
-            return HTTPResponse(400, "")
         self.close()
-        print("Response: " + response)
         code = int(self.get_code(response))
         body = self.get_body(response)
-        return HTTPResponse(code, body)
+        return HTTPResponse(code, body, response)
 
     def POST(self, url, args=None):
-        urlObject = urllib.parse.urlparse(url)
-        port = self.get_host_port(urlObject.port)
-        path = self.get_path(urlObject.path)
-        query = self.get_query_string(urlObject.query)
-        self.connect(urlObject.hostname, port)
+        host, port, path, query = self.extract_url_info(url, args)
+        try:
+            self.connect(host, port)
+        except: 
+            return "Failed to connect to host at specfied port"
         requestBody = ""
         if args != None:
             for arg in args:
@@ -127,21 +158,22 @@ class HTTPClient(object):
         requestString = "{method} {path} HTTP/1.1\r\nHost: {host}\r\nContent-Type: {contentType}; charset=utf-8\r\nContent-Length: {length}\r\n\r\n"
         requestString = requestString.format(method="POST", 
                                              path=path+query, 
-                                             host=urlObject.hostname,
+                                             host=host,
                                              contentType="application/x-www-form-urlencoded",
                                              length=contentLength)
         requestString += requestBody
         self.sendall(requestString)
         response = self.recvall(self.socket)
         self.close()
-        print(response)
         code = int(self.get_code(response))
-        #print(self.get_headers(response))
         body = self.get_body(response)
-        print(body)
-        return HTTPResponse(code, body)
+        return HTTPResponse(code, body, response)
 
     def command(self, url, command="GET", args=None):
+        if (not self.check_url_scheme(url)):
+            return "Wrong URL Scheme"
+        if (not self.check_url_host(url)):
+            return "No host"
         if (command == "POST"):
             return self.POST( url, args )
         else:
