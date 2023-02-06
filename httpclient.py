@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
 # Copyright 2016 Abram Hindle, https://github.com/tywtyw2002, and https://github.com/treedust
+# Copyright 2023 Jason Kim
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -59,7 +60,7 @@ class HTTPClient(object):
     def get_code(self, data):
         dataArray = data.split("\r\n")
         statusLineArray = dataArray[0].split()
-        print(statusLineArray)
+        #print(statusLineArray)
         return statusLineArray[1]
 
     def get_headers(self,data):
@@ -98,19 +99,46 @@ class HTTPClient(object):
         path = self.get_path(urlObject.path)
         query = self.get_query_string(urlObject.query)
         self.connect(urlObject.hostname, port)
-        requestString = "{method} {path} HTTP/1.1\r\nHost: {host}\r\n\r\n"
+        requestString = "{method} {path} HTTP/1.1\r\nHost: {host}\r\nAccept: */*\r\nAccept-Charset: UTF-8\r\nAccept-Language: en-US\r\nAccept-Encoding: gzip\r\n\r\n"
+        print("Request: " + requestString.format(method="GET", path=path+query, host=urlObject.hostname))
         self.sendall(requestString.format(method="GET", path=path+query, host=urlObject.hostname))
         self.socket.shutdown(socket.SHUT_WR)
         response = self.recvall(self.socket)
+        if response == "":
+            return HTTPResponse(400, "")
         self.close()
+        print("Response: " + response)
         code = int(self.get_code(response))
-        #print(self.get_headers(response))
         body = self.get_body(response)
         return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
-        code = 500
-        body = ""
+        urlObject = urllib.parse.urlparse(url)
+        port = self.get_host_port(urlObject.port)
+        path = self.get_path(urlObject.path)
+        query = self.get_query_string(urlObject.query)
+        self.connect(urlObject.hostname, port)
+        requestBody = ""
+        if args != None:
+            for arg in args:
+                requestBody += arg + "=" + args[arg]+"&"
+            requestBody = requestBody[0:-1]
+        contentLength = len(requestBody)
+        requestString = "{method} {path} HTTP/1.1\r\nHost: {host}\r\nContent-Type: {contentType}; charset=utf-8\r\nContent-Length: {length}\r\n\r\n"
+        requestString = requestString.format(method="POST", 
+                                             path=path+query, 
+                                             host=urlObject.hostname,
+                                             contentType="application/x-www-form-urlencoded",
+                                             length=contentLength)
+        requestString += requestBody
+        self.sendall(requestString)
+        response = self.recvall(self.socket)
+        self.close()
+        print(response)
+        code = int(self.get_code(response))
+        #print(self.get_headers(response))
+        body = self.get_body(response)
+        print(body)
         return HTTPResponse(code, body)
 
     def command(self, url, command="GET", args=None):
