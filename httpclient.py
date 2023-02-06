@@ -171,9 +171,9 @@ class HTTPClient(object):
 
     def command(self, url, command="GET", args=None):
         if (not self.check_url_scheme(url)):
-            return "Wrong URL Scheme"
+            return "Wrong URL Scheme. Please enter the URL again"
         if (not self.check_url_host(url)):
-            return "No host"
+            return "No host specfied. Please enter the URL again"
         if (command == "POST"):
             return self.POST( url, args )
         else:
