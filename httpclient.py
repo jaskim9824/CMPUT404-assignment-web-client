@@ -90,7 +90,6 @@ class HTTPClient(object):
     def get_code(self, data):
         dataArray = data.split("\r\n")
         statusLineArray = dataArray[0].split()
-        #print(statusLineArray)
         return statusLineArray[1]
 
     def get_headers(self,data):
