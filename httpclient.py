@@ -129,7 +129,7 @@ class HTTPClient(object):
             self.connect(host, port)
         except: 
             return "Failed to connect to host at specfied port"
-        requestString = "{method} {path} HTTP/1.1\r\nHost: {host}\r\nUser-Agent: \r\nAccept: */*\r\n\r\n"
+        requestString = "{method} {path} HTTP/1.1\r\nHost: {host}\r\nAccept: */*\r\nConnection: close\r\n\r\n"
         print("Request: \n" + requestString.format(method="GET", 
                                                  path=path+query, 
                                                  host=host))
@@ -138,6 +138,8 @@ class HTTPClient(object):
                                           host=host))
         self.socket.shutdown(socket.SHUT_WR)
         response = self.recvall(self.socket)
+        if response == "":
+            print("Response: " + response)
         self.close()
         code = int(self.get_code(response))
         body = self.get_body(response)
@@ -155,7 +157,7 @@ class HTTPClient(object):
                 requestBody += arg + "=" + args[arg]+"&"
             requestBody = requestBody[0:-1]
         contentLength = len(requestBody)
-        requestString = "{method} {path} HTTP/1.1\r\nHost: {host}\r\nContent-Type: {contentType}; charset=utf-8\r\nContent-Length: {length}\r\n\r\n"
+        requestString = "{method} {path} HTTP/1.1\r\nHost: {host}\r\nContent-Type: {contentType}; charset=utf-8\r\nContent-Length: {length}\r\nnConnection: close\r\n\r\n"
         requestString = requestString.format(method="POST", 
                                              path=path+query, 
                                              host=host,
