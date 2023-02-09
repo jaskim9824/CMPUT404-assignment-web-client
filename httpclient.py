@@ -139,7 +139,7 @@ class HTTPClient(object):
         return HTTPResponse(code, body, response)
 
     def POST(self, url, args=None):
-        host, port, path, query = self.extract_url_info(url, args)
+        host, port, path, query = self.extract_url_info(url, None)
         try:
             self.connect(host, port)
         except: 
@@ -150,13 +150,14 @@ class HTTPClient(object):
                 requestBody += arg + "=" + args[arg]+"&"
             requestBody = requestBody[0:-1]
         contentLength = len(requestBody)
-        requestString = "{method} {path} HTTP/1.1\r\nHost: {host}\r\nContent-Type: {contentType}; charset=utf-8\r\nContent-Length: {length}\r\nnConnection: close\r\n\r\n"
+        requestString = "{method} {path} HTTP/1.1\r\nHost: {host}\r\nContent-Type: {contentType}; charset=utf-8\r\nContent-Length: {length}\r\nConnection: close\r\n\r\n"
         requestString = requestString.format(method="POST", 
                                              path=path+query, 
                                              host=host,
                                              contentType="application/x-www-form-urlencoded",
                                              length=contentLength)
         requestString += requestBody
+        print(requestString)
         self.sendall(requestString)
         response = self.recvall(self.socket)
         self.close()
