@@ -157,7 +157,6 @@ class HTTPClient(object):
                                              contentType="application/x-www-form-urlencoded",
                                              length=contentLength)
         requestString += requestBody
-        print(requestString)
         self.sendall(requestString)
         response = self.recvall(self.socket)
         self.close()
