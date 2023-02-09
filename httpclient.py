@@ -38,16 +38,30 @@ class HTTPResponse(object):
         return self.full_response
 
 class HTTPClient(object):
+
+    # Checks the scheme of the provided URL, ensures that it is http:\\
+    # Parameters:
+    #   url - provided URL
+    # Returns: True if scheme of URL is http:\\
     def check_url_scheme(self, url):
         schemeCheck = re.match("^(http:\/\/).*", url)
         if schemeCheck == None:
             return False
         return True
 
+    # Checks if the URL has a provided host
+    # Parameters:
+    #   url - provided URL
+    # Returns: True if URL has host
     def check_url_host(self, url):
         urlObject = urllib.parse.urlparse(url)
         return urlObject.hostname != None
 
+    # Extracts the neccesary information from the URL and provided args
+    # Parameters:
+    #   url - provided URL
+    #   args - provided args
+    # Returns: host, port, path and query string of URL
     def extract_url_info(self, url, args):
         urlObject = urllib.parse.urlparse(url)
         host = urlObject.hostname
@@ -56,18 +70,31 @@ class HTTPClient(object):
         query = self.get_query_string(urlObject.query, args)
         return host, port, path, query
 
+    # Gets the port which the host is listening
+    # Parameters:
+    #   port - port returned from urllib.parse.urlparse
+    # Returns: Port number
     def get_host_port(self,port):
         if port == None:
             return 80
         else:
             return port
 
+    # Gets requested path 
+    # Parameters:
+    #   path - path returned from urllib.parse.urlparse
+    # Returns: Path
     def get_path(self, path):
         if path == "":
             return "/"
         else:
             return path
 
+    # Gets requested query string
+    # Parameters:
+    #   query - query returned from urllib.parse.urlparse
+    #   args - provided args
+    # Returns: Query string
     def get_query_string(self, query, args):
         if args != None:
             return "?" + self.extract_query_from_args(args) + query
@@ -76,11 +103,15 @@ class HTTPClient(object):
         else:
             return ""
 
+    # Converts args into a query string
+    # Parameters:
+    #   args - provided args
+    # Returns: Query string
     def extract_query_from_args(self, args):
         queryString = ""
         for arg in args:
-            queryString += arg + "=" + args[arg]+"&"
-        return queryString[0:1]
+            queryString += urllib.parse.quote(arg) + "=" + urllib.parse.quote(args[arg])+"&"
+        return queryString[0:-1]
 
     def connect(self, host, port):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -146,9 +177,7 @@ class HTTPClient(object):
             return "Failed to connect to host at specfied port"
         requestBody = ""
         if args != None:
-            for arg in args:
-                requestBody += arg + "=" + args[arg]+"&"
-            requestBody = requestBody[0:-1]
+            requestBody = self.extract_query_from_args(args)
         contentLength = len(requestBody)
         requestString = "{method} {path} HTTP/1.1\r\nHost: {host}\r\nContent-Type: {contentType}; charset=utf-8\r\nContent-Length: {length}\r\nConnection: close\r\n\r\n"
         requestString = requestString.format(method="POST", 
