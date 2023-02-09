@@ -125,18 +125,19 @@ class HTTPClient(object):
 
     def GET(self, url, args=None):
         host, port, path, query = self.extract_url_info(url, args)
+        print("Sending GET to host: " + host)
+        print(args)
         try:
             self.connect(host, port)
         except: 
             return "Failed to connect to host at specfied port"
-        requestString = "{method} {path} HTTP/1.1\r\nHost: {host}\r\nAccept: */*\r\nConnection: close\r\n\r\n"
+        requestString = "{method} {path} HTTP/1.1\r\nHost: {host}\r\nUser-Agent: \r\nAccept: */*\r\nConnection: close\r\n\r\n"
         print("Request: \n" + requestString.format(method="GET", 
                                                  path=path+query, 
                                                  host=host))
         self.sendall(requestString.format(method="GET", 
                                           path=path+query, 
                                           host=host))
-        self.socket.shutdown(socket.SHUT_WR)
         response = self.recvall(self.socket)
         if response == "":
             print("Response: " + response)
